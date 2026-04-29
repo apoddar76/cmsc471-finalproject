@@ -11,13 +11,56 @@
     <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+    <div class="acorn-cursor" aria-hidden="true">
+        <svg viewBox="0 0 20 26" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="10" cy="15.5" rx="7.2" ry="8.5" fill="#9c5a2a"></ellipse>
+            <path d="M4 10C5.4 6.8 14.6 6.8 16 10V12.3H4V10Z" fill="#5f3a1e"></path>
+            <path d="M10 4.7C10.8 3.2 12 2.5 13.2 2.2" stroke="#5f3a1e" stroke-width="1.6" stroke-linecap="round"></path>
+        </svg>
+    </div>
 
-    <h1>Mapping the Movements and Behaviors of Central Park Squirrels</h1>
+    <main class="container">
+        <section class="landing">
+            <div class="landing-copy">
+                <h1>Mapping the Movements and Behaviors of Central Park Squirrels</h1>
+                <h2>How do squirrel behaviors vary across space, time of day, fur color, and interactions with humans in Central Park?</h2>
 
-    <div id="vis"></div>
+                <div class="dataset-card">
+                    <h3>About the dataset</h3>
+                    <p>
+                        This project uses the NYC Squirrel Census dataset (`data/nyc_squirrels.csv`), which includes 3,000 recorded squirrel sightings across Central Park. 
+                        The data captures location coordinates, morning vs evening observations, fur color categories, and behavior and human-interaction variables such as running, climbing, foraging, approaching people, and running from people.
+                    </p>
+                </div>
+
+                <button class="start-btn" id="start-exploring">Start Exploring</button>
+            </div>
+
+            <div class="squirrel-visual" aria-hidden="true">
+                <img src="data/squirrel.png" alt="Squirrel illustration">
+            </div>
+        </section>
+
+        <section id="main-visualization">
+            <div id="vis"></div>
+        </section>
+    </main>
 
     <!-- Load libraries before your code -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        const startButton = document.getElementById("start-exploring");
+        const mainVisualization = document.getElementById("main-visualization");
+        const acornCursor = document.querySelector(".acorn-cursor");
+
+        startButton.addEventListener("click", () => {
+            mainVisualization.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+
+        document.addEventListener("mousemove", (event) => {
+            acornCursor.style.transform = `translate(${event.clientX}px, ${event.clientY}px)`;
+        });
+    </script>
     <script src="js/script.js"></script>
 </body>
 </html>
