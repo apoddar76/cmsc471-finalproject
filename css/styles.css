@@ -1,20 +1,117 @@
-/* reset default styles */
+/* page foundation */
 * {
-    font-family: Arial, sans-serif;
-    max-width: 800px;
-    margin: 0px auto;
-    line-height: 1.8;
+    box-sizing: border-box;
 }
 
-/* container styling for layout */
-.container {
-    max-width: 800px;
-    margin: 2rem auto;
+body {
+    margin: 0;
     font-family: Arial, sans-serif;
+    line-height: 1.6;
+    color: #2d1d0f;
+    background: linear-gradient(180deg, #fffdf8 0%, #f9f1e4 100%);
+}
+
+.container {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.landing {
+    min-height: 88vh;
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 2rem;
+    align-items: center;
+    padding: 4.5rem 0 3rem;
+}
+
+.landing-copy h1 {
+    font-size: 2.4rem;
+    line-height: 1.2;
+    margin: 0 0 0.8rem;
+    color: #3b2613;
+}
+
+.landing-copy h2 {
+    margin: 0 0 1.2rem;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: #644325;
+}
+
+.dataset-card {
+    padding: 1rem 1.1rem;
+    border-radius: 12px;
+    border: 1px solid #e0c8a5;
+    background: #fff9ef;
+}
+
+.dataset-card h3 {
+    margin: 0 0 0.5rem;
+    color: #54361f;
+}
+
+.dataset-card p {
+    margin: 0;
+    color: #5f4228;
+}
+
+.start-btn {
+    margin-top: 1.2rem;
+    padding: 0.8rem 1.2rem;
+    border: none;
+    border-radius: 999px;
+    background: #8a4f1e;
+    color: #fff;
+    font-size: 0.96rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.start-btn:hover {
+    background: #6f3e17;
+}
+
+.squirrel-visual {
+    display: flex;
+    justify-content: center;
+}
+
+.squirrel-visual img {
+    width: min(100%, 340px);
+    height: auto;
+    filter: drop-shadow(0 10px 14px rgba(90, 46, 14, 0.2));
+}
+
+.acorn-cursor {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 12px;
+    height: 16px;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+}
+
+#main-visualization {
+    padding: 1.5rem 0 3rem;
 }
 
 /* otherwise you can't see the svg */
 #vis svg {
     margin: 2rem 0;
     border: 1px solid #ccc; 
+}
+
+@media (max-width: 760px) {
+    .landing {
+        grid-template-columns: 1fr;
+        padding-top: 3rem;
+    }
+
+    .landing-copy h1 {
+        font-size: 1.9rem;
+    }
 }
