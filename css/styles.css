@@ -115,3 +115,160 @@ body {
         font-size: 1.9rem;
     }
 }
+
+.vis-header h2 {
+    margin: 0 0 0.35rem;
+    color: #3b2613;
+}
+
+.vis-header p {
+    margin: 0 0 1rem;
+    color: #6a4a2c;
+}
+
+.controls-panel,
+.timeline-panel,
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem 1rem;
+    align-items: end;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid #e4d0b3;
+    border-radius: 14px;
+    background: rgba(255, 249, 239, 0.9);
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    min-width: 140px;
+    gap: 0.35rem;
+}
+
+.control-group label,
+.slider-wrap label {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #5b3b20;
+}
+
+.control-group select,
+.slider-wrap input[type="range"] {
+    padding: 0.45rem 0.55rem;
+    border: 1px solid #cfae86;
+    border-radius: 8px;
+    background: #fff;
+    color: #3b2613;
+}
+
+.timeline-btn {
+    padding: 0.7rem 1rem;
+    border: none;
+    border-radius: 999px;
+    background: #8a4f1e;
+    color: #fff;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.timeline-btn:hover {
+    background: #6f3e17;
+}
+
+.slider-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 260px;
+    flex: 1;
+}
+
+.timeline-date {
+    min-width: 120px;
+    font-weight: 700;
+    color: #5b3b20;
+}
+
+.timeline-mode {
+    font-size: 0.92rem;
+    color: #5b3b20;
+}
+
+.chart-wrap {
+    overflow-x: auto;
+}
+
+#vis svg {
+    margin: 0.5rem 0 1rem;
+    border: 1px solid #dbc4a4;
+    border-radius: 18px;
+    background: #fcf8f0;
+}
+
+.plot-bg {
+    fill: #f3ead7;
+}
+
+.park-boundary {
+    fill: none;
+    stroke: none;
+}
+
+.map-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    fill: #3b2613;
+}
+
+.map-subtitle {
+    font-size: 0.9rem;
+    fill: #6a4a2c;
+}
+
+.north-label {
+    font-size: 0.95rem;
+    font-weight: 700;
+    fill: #5a3d22;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-right: 0.8rem;
+}
+
+.legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.legend-label {
+    font-size: 0.92rem;
+    color: #4b311a;
+}
+
+.tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(47, 30, 16, 0.95);
+    color: #fffaf2;
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    line-height: 1.45;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+    max-width: 260px;
+    z-index: 10000;
+}
+
+.error-message {
+    color: #8b2d2d;
+    font-weight: 700;
+    margin-top: 1rem;
+}
