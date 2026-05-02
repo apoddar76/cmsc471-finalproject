@@ -3,6 +3,11 @@
     box-sizing: border-box;
 }
 
+html,
+html * {
+    cursor: none !important;
+}
+
 body {
     margin: 0;
     font-family: Arial, sans-serif;
@@ -88,11 +93,19 @@ body {
     position: fixed;
     top: 0;
     left: 0;
-    width: 12px;
-    height: 16px;
+    width: 26px;
+    height: 34px;
     pointer-events: none;
     z-index: 9999;
+    /* Hotspot at center of acorn; position set via left/top in JS */
     transform: translate(-50%, -50%);
+    margin: 0;
+}
+
+.acorn-cursor svg {
+    display: block;
+    width: 100%;
+    height: 100%;
 }
 
 #main-visualization {

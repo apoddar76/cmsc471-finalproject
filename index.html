@@ -58,7 +58,8 @@
         });
 
         document.addEventListener("mousemove", (event) => {
-            acornCursor.style.transform = `translate(${event.clientX}px, ${event.clientY}px)`;
+            acornCursor.style.left = `${event.clientX}px`;
+            acornCursor.style.top = `${event.clientY}px`;
         });
     </script>
     <script src="js/script.js"></script>
