@@ -272,3 +272,91 @@ body {
     font-weight: 700;
     margin-top: 1rem;
 }
+
+.behavior-explorer-section {
+    margin-top: 1.2rem;
+}
+
+.behavior-explorer-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.7rem;
+}
+
+.behavior-explorer-header h3 {
+    margin: 0 0 0.3rem;
+    color: #3b2613;
+    font-size: 1.2rem;
+}
+
+.behavior-explorer-header p {
+    margin: 0;
+    color: #6a4a2c;
+}
+
+.behavior-btn {
+    white-space: nowrap;
+}
+
+.behavior-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.9rem 1rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid #e4d0b3;
+    border-radius: 14px;
+    background: rgba(255, 249, 239, 0.9);
+}
+
+.behavior-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    fill: #3b2613;
+}
+
+.behavior-subtitle {
+    font-size: 0.88rem;
+    fill: #6a4a2c;
+}
+
+.behavior-axis text {
+    fill: #5a3d22;
+    font-size: 0.8rem;
+}
+
+.behavior-axis-x .tick text {
+    font-weight: 700;
+}
+
+.behavior-axis path,
+.behavior-axis line {
+    stroke: #cfae86;
+}
+
+.behavior-shift-label {
+    font-size: 0.72rem;
+    text-anchor: middle;
+    fill: #6a4a2c;
+    pointer-events: none;
+}
+
+.behavior-group.behavior-selected .behavior-segment {
+    stroke: #3b2613;
+    stroke-width: 2;
+}
+
+.behavior-segment.behavior-segment-selected {
+    stroke: #1f1207;
+    stroke-width: 2.4;
+}
+
+@media (max-width: 760px) {
+    .behavior-explorer-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

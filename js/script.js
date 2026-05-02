@@ -1,6 +1,9 @@
 const width = 920;
 const height = 720;
 const margin = { top: 70, right: 40, bottom: 70, left: 40 };
+const behaviorChartWidth = 920;
+const behaviorChartHeight = 450;
+const behaviorChartMargin = { top: 70, right: 34, bottom: 102, left: 70 };
 
 const behaviorOptions = [
     { value: "all", label: "All behaviors" },
@@ -17,6 +20,11 @@ const humanInteractionOptions = [
     { value: "indifferent", label: "Indifferent" },
     { value: "runs_from", label: "Runs from humans" }
 ];
+const majorBehaviors = ["running", "chasing", "climbing", "eating", "foraging"];
+const behaviorColors = {
+    "Ground Plane": "#5f8f68",
+    "Above Ground": "#9f76b5"
+};
 
 const visContainer = d3.select("#vis");
 
@@ -104,6 +112,23 @@ visContainer.html(`
     <div class="chart-wrap">
         <svg id="mapSvg"></svg>
     </div>
+
+    <section class="behavior-explorer-section">
+        <div class="behavior-explorer-header">
+            <div>
+                <h3>Behavior Explorer</h3>
+                <p>
+                    Compare running, chasing, climbing, eating, and foraging by time of day and location plane.
+                    Click a behavior group to filter the map points.
+                </p>
+            </div>
+            <button id="reorderBehaviorBars" class="timeline-btn behavior-btn">Sort by frequency</button>
+        </div>
+        <div class="behavior-legend" id="behaviorLegend"></div>
+        <div class="chart-wrap">
+            <svg id="behaviorSvg"></svg>
+        </div>
+    </section>
 `);
 
 const svg = d3
@@ -158,6 +183,39 @@ const dateLabel = d3.select("#dateLabel");
 const playButton = d3.select("#playButton");
 const showAllDates = d3.select("#showAllDates");
 const legend = d3.select("#legend");
+const behaviorLegend = d3.select("#behaviorLegend");
+const behaviorSvg = d3
+    .select("#behaviorSvg")
+    .attr("width", behaviorChartWidth)
+    .attr("height", behaviorChartHeight);
+const behaviorPlot = behaviorSvg
+    .append("g")
+    .attr("transform", `translate(${behaviorChartMargin.left},${behaviorChartMargin.top})`);
+const behaviorInnerWidth = behaviorChartWidth - behaviorChartMargin.left - behaviorChartMargin.right;
+const behaviorInnerHeight = behaviorChartHeight - behaviorChartMargin.top - behaviorChartMargin.bottom;
+const behaviorXAxisGroup = behaviorPlot
+    .append("g")
+    .attr("class", "behavior-axis behavior-axis-x")
+    .attr("transform", `translate(0,${behaviorInnerHeight + 32})`);
+const behaviorYAxisGroup = behaviorPlot
+    .append("g")
+    .attr("class", "behavior-axis behavior-axis-y");
+const behaviorBarsLayer = behaviorPlot.append("g").attr("class", "behavior-bars-layer");
+const behaviorTitle = behaviorSvg
+    .append("text")
+    .attr("class", "behavior-title")
+    .attr("x", behaviorChartWidth / 2)
+    .attr("y", 30)
+    .attr("text-anchor", "middle")
+    .text("Major Behaviors by Shift and Plane");
+const behaviorSubtitle = behaviorSvg
+    .append("text")
+    .attr("class", "behavior-subtitle")
+    .attr("x", behaviorChartWidth / 2)
+    .attr("y", 52)
+    .attr("text-anchor", "middle")
+    .text("AM vs PM bars are split into Ground Plane and Above Ground");
+const reorderBehaviorBarsButton = d3.select("#reorderBehaviorBars");
 
 behaviorFilter
     .selectAll("option")
@@ -179,6 +237,10 @@ let uniqueDates = [];
 let currentDateIndex = 0;
 let timer = null;
 let xScale, yScale;
+let selectedBehaviorFromChart = null;
+let selectedShiftFromChart = null;
+let selectedLocationFromChart = null;
+let sortBehaviorByFrequency = false;
 
 function truthy(value) {
     if (value === true) return true;
@@ -313,7 +375,8 @@ function updateLegend() {
     entries.exit().remove();
 }
 
-function getFilteredData() {
+function getFilteredData(options = {}) {
+    const skipBehaviorFilter = options.skipBehaviorFilter === true;
     const shiftVal = shiftFilter.property("value");
     const furVal = furFilter.property("value");
     const ageVal = ageFilter.property("value");
@@ -325,8 +388,10 @@ function getFilteredData() {
         const shiftMatch = shiftVal === "all" || d.shift === shiftVal;
         const furMatch = furVal === "all" || d.primary_fur_color === furVal;
         const ageMatch = ageVal === "all" || d.age === ageVal;
-        const behaviorMatch = behaviorVal === "all" || d[behaviorVal] === true;
+        const behaviorMatch = skipBehaviorFilter || behaviorVal === "all" || d[behaviorVal] === true;
         const interactionMatch = interactionVal === "all" || d[interactionVal] === true;
+        const chartShiftMatch = !selectedShiftFromChart || d.shift === selectedShiftFromChart;
+        const chartLocationMatch = !selectedLocationFromChart || d.location === selectedLocationFromChart;
 
         const dateMatch =
             showAll ||
@@ -334,8 +399,256 @@ function getFilteredData() {
                 d.dateObj &&
                 d3.timeDay.count(d.dateObj, uniqueDates[currentDateIndex]) === 0);
 
-        return shiftMatch && furMatch && ageMatch && behaviorMatch && interactionMatch && dateMatch;
+        return (
+            shiftMatch &&
+            furMatch &&
+            ageMatch &&
+            behaviorMatch &&
+            interactionMatch &&
+            chartShiftMatch &&
+            chartLocationMatch &&
+            dateMatch
+        );
     });
+}
+
+function formatBehaviorLabel(value) {
+    return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function getBehaviorSeriesData() {
+    const source = getFilteredData({ skipBehaviorFilter: true });
+    const totalSightings = source.length;
+    const shifts = ["AM", "PM"];
+    const locations = ["Ground Plane", "Above Ground"];
+
+    const series = majorBehaviors.map(behavior => {
+        const shiftCounts = shifts.map(shift => {
+            const segments = locations.map(location => {
+                const count = source.filter(
+                    d => d[behavior] && d.shift === shift && d.location === location
+                ).length;
+                return { location, count };
+            });
+            const total = d3.sum(segments, s => s.count);
+            return { shift, total, segments };
+        });
+
+        return {
+            behavior,
+            label: formatBehaviorLabel(behavior),
+            total: d3.sum(shiftCounts, d => d.total),
+            shifts: shiftCounts
+        };
+    });
+
+    return { series, totalSightings };
+}
+
+function updateBehaviorLegend() {
+    const items = [
+        { label: "Ground Plane", color: behaviorColors["Ground Plane"] },
+        { label: "Above Ground", color: behaviorColors["Above Ground"] }
+    ];
+
+    const entries = behaviorLegend.selectAll(".legend-item").data(items, d => d.label);
+    const enter = entries.enter().append("div").attr("class", "legend-item");
+    enter.append("span").attr("class", "legend-swatch");
+    enter.append("span").attr("class", "legend-label");
+
+    entries.merge(enter).select(".legend-swatch").style("background", d => d.color);
+    entries.merge(enter).select(".legend-label").text(d => d.label);
+    entries.exit().remove();
+}
+
+function applyBehaviorFilter(behavior, shift = null, location = null) {
+    const sameSelection =
+        selectedBehaviorFromChart === behavior &&
+        selectedShiftFromChart === shift &&
+        selectedLocationFromChart === location;
+
+    if (sameSelection) {
+        selectedBehaviorFromChart = null;
+        selectedShiftFromChart = null;
+        selectedLocationFromChart = null;
+        behaviorFilter.property("value", "all");
+    } else {
+        selectedBehaviorFromChart = behavior;
+        selectedShiftFromChart = shift;
+        selectedLocationFromChart = location;
+        behaviorFilter.property("value", behavior);
+    }
+
+    stopPlayback();
+    updatePoints();
+}
+
+function updateBehaviorExplorer() {
+    const { series, totalSightings } = getBehaviorSeriesData();
+    const shifts = ["AM", "PM"];
+    const x0Domain = sortBehaviorByFrequency
+        ? [...series].sort((a, b) => d3.descending(a.total, b.total)).map(d => d.behavior)
+        : majorBehaviors;
+
+    const x0 = d3
+        .scaleBand()
+        .domain(x0Domain)
+        .range([0, behaviorInnerWidth])
+        .paddingInner(0.24);
+    const x1 = d3
+        .scaleBand()
+        .domain(shifts)
+        .range([0, x0.bandwidth()])
+        .padding(0.18);
+    const maxCount = d3.max(series, d => d3.max(d.shifts, s => s.total)) || 0;
+    const y = d3
+        .scaleLinear()
+        .domain([0, Math.max(1, maxCount)])
+        .nice()
+        .range([behaviorInnerHeight, 0]);
+
+    behaviorXAxisGroup
+        .transition()
+        .duration(500)
+        .call(
+            d3.axisBottom(x0).tickFormat(key => formatBehaviorLabel(key))
+        );
+
+    behaviorYAxisGroup
+        .transition()
+        .duration(500)
+        .call(d3.axisLeft(y).ticks(6).tickFormat(d3.format("d")));
+
+    const groups = behaviorBarsLayer
+        .selectAll(".behavior-group")
+        .data(series, d => d.behavior)
+        .join(enter => {
+            const g = enter.append("g").attr("class", "behavior-group");
+            g.append("text").attr("class", "behavior-shift-label behavior-shift-label-am").text("AM");
+            g.append("text").attr("class", "behavior-shift-label behavior-shift-label-pm").text("PM");
+            return g;
+        });
+
+    groups
+        .transition()
+        .duration(500)
+        .attr("transform", d => `translate(${x0(d.behavior)},0)`);
+
+    groups.each(function (behaviorDatum) {
+        const group = d3.select(this);
+        const shiftGroups = group
+            .selectAll(".behavior-shift-group")
+            .data(behaviorDatum.shifts, d => `${behaviorDatum.behavior}-${d.shift}`)
+            .join("g")
+            .attr("class", "behavior-shift-group")
+            .attr("transform", d => `translate(${x1(d.shift)},0)`);
+
+        shiftGroups.each(function (shiftDatum) {
+            const shiftGroup = d3.select(this);
+            let runningY = y(0);
+            const stacked = shiftDatum.segments.map(segment => {
+                const y1 = runningY;
+                const y0 = y1 - (y(0) - y(segment.count));
+                runningY = y0;
+                return { ...segment, y0, y1, shift: shiftDatum.shift };
+            });
+
+            shiftGroup
+                .selectAll("rect")
+                .data(stacked, d => `${behaviorDatum.behavior}-${shiftDatum.shift}-${d.location}`)
+                .join(
+                    enter =>
+                        enter
+                            .append("rect")
+                            .attr("class", "behavior-segment")
+                            .attr("x", 0)
+                            .attr("width", x1.bandwidth())
+                            .attr("y", y(0))
+                            .attr("height", 0)
+                            .attr("fill", d => behaviorColors[d.location])
+                            .attr("stroke", "#fffdf7")
+                            .attr("stroke-width", 1)
+                            .style("cursor", "pointer")
+                            .on("click", () =>
+                                applyBehaviorFilter(
+                                    behaviorDatum.behavior,
+                                    shiftDatum.shift,
+                                    d.location
+                                )
+                            )
+                            .on("mouseover", function (event, d) {
+                                d3.select(this).attr("opacity", 0.82);
+                                const pctTotal = totalSightings ? (d.count / totalSightings) * 100 : 0;
+                                const pctBehavior = behaviorDatum.total ? (d.count / behaviorDatum.total) * 100 : 0;
+                                tooltip
+                                    .style("opacity", 1)
+                                    .html(`
+                                        <div><strong>Behavior:</strong> ${behaviorDatum.label}</div>
+                                        <div><strong>Shift:</strong> ${d.shift}</div>
+                                        <div><strong>Plane:</strong> ${d.location}</div>
+                                        <div><strong>Count:</strong> ${d.count}</div>
+                                        <div><strong>% of visible sightings:</strong> ${pctTotal.toFixed(1)}%</div>
+                                        <div><strong>% within ${behaviorDatum.label}:</strong> ${pctBehavior.toFixed(1)}%</div>
+                                    `);
+                            })
+                            .on("mousemove", function (event) {
+                                tooltip
+                                    .style("left", `${event.pageX + 14}px`)
+                                    .style("top", `${event.pageY - 18}px`);
+                            })
+                            .on("mouseout", function () {
+                                d3.select(this).attr("opacity", 1);
+                                tooltip.style("opacity", 0);
+                            })
+                            .call(enter =>
+                                enter
+                                    .transition()
+                                    .duration(500)
+                                    .attr("y", d => d.y0)
+                                    .attr("height", d => Math.max(0, d.y1 - d.y0))
+                            ),
+                    update =>
+                        update.call(update =>
+                            update
+                                .transition()
+                                .duration(500)
+                                .attr("x", 0)
+                                .attr("width", x1.bandwidth())
+                                .attr("y", d => d.y0)
+                                .attr("height", d => Math.max(0, d.y1 - d.y0))
+                                .attr("fill", d => behaviorColors[d.location])
+                        )
+                );
+        });
+
+        group
+            .select(".behavior-shift-label-am")
+            .attr("x", x1("AM") + x1.bandwidth() / 2)
+            .attr("y", behaviorInnerHeight + 14);
+
+        group
+            .select(".behavior-shift-label-pm")
+            .attr("x", x1("PM") + x1.bandwidth() / 2)
+            .attr("y", behaviorInnerHeight + 14);
+    });
+
+    behaviorBarsLayer
+        .selectAll(".behavior-group")
+        .classed("behavior-selected", d => d.behavior === selectedBehaviorFromChart)
+        .on("click", (_, d) => applyBehaviorFilter(d.behavior));
+
+    behaviorBarsLayer
+        .selectAll(".behavior-segment")
+        .classed("behavior-segment-selected", function (d) {
+            return (
+                selectedBehaviorFromChart &&
+                selectedShiftFromChart &&
+                selectedLocationFromChart &&
+                this.parentNode &&
+                d.shift === selectedShiftFromChart &&
+                d.location === selectedLocationFromChart
+            );
+        });
 }
 
 function updateDateLabel() {
@@ -426,6 +739,7 @@ function updatePoints() {
         );
 
     updateLegend();
+    updateBehaviorExplorer();
 }
 
 function drawBoundary() {
@@ -565,11 +879,20 @@ function initializeEvents() {
     });
     behaviorFilter.on("change", () => {
         stopPlayback();
+        const val = behaviorFilter.property("value");
+        selectedBehaviorFromChart = val === "all" ? null : val;
+        selectedShiftFromChart = null;
+        selectedLocationFromChart = null;
         updatePoints();
     });
     interactionFilter.on("change", () => {
         stopPlayback();
         updatePoints();
+    });
+    reorderBehaviorBarsButton.on("click", function () {
+        sortBehaviorByFrequency = !sortBehaviorByFrequency;
+        d3.select(this).text(sortBehaviorByFrequency ? "Reset order" : "Sort by frequency");
+        updateBehaviorExplorer();
     });
 }
 
@@ -612,6 +935,7 @@ d3.csv("data/nyc_squirrels.csv").then(data => {
 
     drawBoundary();
     setupTimeline();
+    updateBehaviorLegend();
     initializeEvents();
     updatePoints();
 }).catch(error => {
