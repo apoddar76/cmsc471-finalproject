@@ -1078,7 +1078,7 @@ function updateInteractionLegend() {
 function getInteractionGroups(breakdown) {
     if (breakdown === "shift") return ["AM", "PM"];
     if (breakdown === "location") return ["Ground Plane", "Above Ground"];
-    if (breakdown === "fur") return ["Gray", "Cinnamon", "Black", "Unknown"];
+    if (breakdown === "fur") return ["Gray", "Cinnamon", "Black"];
     return ["Overall"];
 }
 
