@@ -868,33 +868,101 @@ function drawBoundary() {
 
     boundaryPath.attr("d", line(boundaryCoords));
 
-    const northArrowX = width - 80;
-    const northArrowY = 105;
+    ensureCompass();
+}
 
-    svg.append("text")
-        .attr("class", "north-label")
-        .attr("x", northArrowX)
-        .attr("y", northArrowY - 18)
-        .attr("text-anchor", "middle")
-        .text("N");
+function ensureCompass() {
+    const padRight = margin.right + 24 + 50;
+    const padBottom = margin.bottom + 45;
+    const compassX = width - padRight;
+    const compassY = height - padBottom;
 
-    svg.append("line")
-        .attr("x1", northArrowX)
-        .attr("x2", northArrowX)
-        .attr("y1", northArrowY + 18)
-        .attr("y2", northArrowY - 8)
-        .attr("stroke", "#5a3d22")
-        .attr("stroke-width", 2.4);
+    const armInner = 19;
+    const tipOut = 11;
+    const arrowHalf = 4.5;
+    const armNorthTip = -(armInner + tipOut);
+    const armSouthTip = armInner + tipOut;
+    const armEwTip = armInner + tipOut;
 
-    svg.append("path")
-        .attr(
-            "d",
-            `M ${northArrowX} ${northArrowY - 18}
-             L ${northArrowX - 7} ${northArrowY - 3}
-             L ${northArrowX + 7} ${northArrowY - 3}
-             Z`
-        )
-        .attr("fill", "#5a3d22");
+    let g = svg.select("g.map-compass");
+    if (g.empty()) {
+        g = svg.append("g").attr("class", "map-compass compass-rose");
+
+        g.append("line")
+            .attr("class", "compass-axis compass-axis-ns")
+            .attr("x1", 0)
+            .attr("y1", armInner)
+            .attr("x2", 0)
+            .attr("y2", -armInner);
+
+        g.append("line")
+            .attr("class", "compass-axis compass-axis-ew")
+            .attr("x1", -armInner)
+            .attr("y1", 0)
+            .attr("x2", armInner)
+            .attr("y2", 0);
+
+        g.append("path")
+            .attr("class", "compass-arrowhead compass-arrow-n")
+            .attr(
+                "d",
+                `M 0 ${armNorthTip} L ${-arrowHalf} ${-armInner} L ${arrowHalf} ${-armInner} Z`
+            );
+
+        g.append("path")
+            .attr("class", "compass-arrowhead compass-arrow-s")
+            .attr(
+                "d",
+                `M 0 ${armSouthTip} L ${-arrowHalf} ${armInner} L ${arrowHalf} ${armInner} Z`
+            );
+
+        g.append("path")
+            .attr("class", "compass-arrowhead compass-arrow-e")
+            .attr(
+                "d",
+                `M ${armEwTip} 0 L ${armInner} ${-arrowHalf} L ${armInner} ${arrowHalf} Z`
+            );
+
+        g.append("path")
+            .attr("class", "compass-arrowhead compass-arrow-w")
+            .attr(
+                "d",
+                `M ${-armEwTip} 0 L ${-armInner} ${-arrowHalf} L ${-armInner} ${arrowHalf} Z`
+            );
+
+        g.append("circle").attr("class", "compass-center-dot").attr("cx", 0).attr("cy", 0).attr("r", 2.2);
+
+        g.append("text")
+            .attr("class", "compass-label compass-dir-n")
+            .attr("x", 0)
+            .attr("y", armNorthTip - 6)
+            .attr("text-anchor", "middle")
+            .text("N");
+
+        g.append("text")
+            .attr("class", "compass-label compass-dir-s")
+            .attr("x", 0)
+            .attr("y", armSouthTip + 14)
+            .attr("text-anchor", "middle")
+            .text("S");
+
+        g.append("text")
+            .attr("class", "compass-label compass-dir-e")
+            .attr("x", armEwTip + 12)
+            .attr("y", 5)
+            .attr("text-anchor", "middle")
+            .text("E");
+
+        g.append("text")
+            .attr("class", "compass-label compass-dir-w")
+            .attr("x", -armEwTip - 12)
+            .attr("y", 5)
+            .attr("text-anchor", "middle")
+            .text("W");
+    }
+
+    g.attr("transform", `translate(${compassX},${compassY})`);
+    g.raise();
 }
 
 function stopPlayback() {

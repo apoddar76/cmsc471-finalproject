@@ -240,10 +240,37 @@ body {
     fill: #6a4a2c;
 }
 
-.north-label {
-    font-size: 0.95rem;
+.compass-rose .compass-axis {
+    stroke: #5a3d22;
+    stroke-linecap: round;
+}
+
+.compass-rose .compass-axis-ns {
+    stroke-width: 2;
+}
+
+.compass-rose .compass-axis-ew {
+    stroke-width: 1.35;
+}
+
+.compass-rose .compass-arrowhead {
+    fill: #5a3d22;
+}
+
+.compass-rose .compass-center-dot {
+    fill: #fffdf8;
+    stroke: #5a3d22;
+    stroke-width: 1.2;
+}
+
+.compass-rose .compass-label {
+    font-size: 0.74rem;
     font-weight: 700;
     fill: #5a3d22;
+}
+
+.compass-rose .compass-dir-n {
+    font-size: 0.82rem;
 }
 
 .legend-item {
