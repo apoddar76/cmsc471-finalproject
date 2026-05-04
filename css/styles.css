@@ -213,7 +213,39 @@ body {
     overflow-x: auto;
 }
 
-#vis svg {
+.map-chart-stack {
+    position: relative;
+}
+
+#leafletMap {
+    min-height: 720px;
+    width: 100%;
+    z-index: 1;
+    filter: brightness(1.15) saturate(0.45) contrast(0.85);
+}
+
+#mapSvg {
+    position: absolute;
+    top: 0 !important;
+    left: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    z-index: 2;
+    pointer-events: none;
+    background: transparent;
+    border: none !important;
+}
+
+#mapSvg .plot-bg,
+#mapSvg .park-boundary {
+    display: none;
+}
+
+#mapSvg circle {
+    pointer-events: auto;
+}
+
+#vis svg:not(#mapSvg) {
     margin: 0.5rem 0 1rem;
     border: 1px solid #dbc4a4;
     border-radius: 18px;

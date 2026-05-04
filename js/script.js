@@ -154,6 +154,7 @@ visContainer.html(`
     <div class="legend" id="legend"></div>
 
     <div class="chart-wrap map-chart-stack">
+        <div id="leafletMap"></div>
         <svg id="mapSvg"></svg>
     </div>
 
@@ -167,6 +168,7 @@ visContainer.html(`
                 </p>
             </div>
         </div>
+        <div class="behavior-legend" id="furLegend"></div>
         <div class="chart-wrap">
             <svg id="furWaffleSvg"></svg>
         </div>
@@ -228,11 +230,11 @@ visContainer.html(`
         <div class="behavior-legend day-shift-legend" id="dayShiftLegend">
             <div class="legend-item">
                 <span class="legend-swatch" style="background:#b5652b"></span>
-                <span class="legend-label">AM (morning)</span>
+                <span class="legend-label">AM</span>
             </div>
             <div class="legend-item">
                 <span class="legend-swatch" style="background:#2f6f4e"></span>
-                <span class="legend-label">PM (afternoon / evening)</span>
+                <span class="legend-label">PM</span>
             </div>
         </div>
         <div class="chart-wrap">
@@ -243,8 +245,8 @@ visContainer.html(`
 
 const svg = d3
     .select("#mapSvg")
-    .attr("width", width)
-    .attr("height", height);
+    .style("width", "100%")
+    .style("height", "100%");
 
 const tooltip = d3
     .select("body")
@@ -254,30 +256,15 @@ const tooltip = d3
 
 const plot = svg.append("g");
 
-const titleGroup = svg.append("g");
-titleGroup
-    .append("text")
-    .attr("x", width / 2)
-    .attr("y", 30)
-    .attr("text-anchor", "middle")
-    .attr("class", "map-title")
-    .text("Central Park Squirrel Sightings");
-
-titleGroup
-    .append("text")
-    .attr("x", width / 2)
-    .attr("y", 52)
-    .attr("text-anchor", "middle")
-    .attr("class", "map-subtitle")
-    .text("Use filters and the timeline to explore patterns in activity");
-
 const backgroundRect = plot
     .append("rect")
     .attr("class", "plot-bg")
     .attr("x", margin.left)
     .attr("y", margin.top)
     .attr("rx", 16)
-    .attr("ry", 16);
+    .attr("ry", 16)
+    .attr("fill", "none")
+    .attr("opacity", 0);
 
 const boundaryPath = plot.append("path").attr("class", "park-boundary");
 const pointLayer = plot.append("g").attr("class", "points-layer");
@@ -302,6 +289,8 @@ const furWaffleFootnote = furWaffleSvg
     .attr("x", waffleChartWidth / 2)
     .attr("y", waffleChartHeight - 14)
     .attr("text-anchor", "middle");
+
+const furLegend = d3.select("#furLegend");
 
 const dayShiftNormalize = d3.select("#dayShiftNormalize");
 const dayShiftSvg = d3
@@ -416,6 +405,7 @@ let uniqueDates = [];
 let currentDateIndex = 0;
 let timer = null;
 let xScale, yScale;
+let leafletMap;
 let selectedBehaviorFromChart = null;
 let selectedShiftFromChart = null;
 let selectedLocationFromChart = null;
@@ -432,6 +422,18 @@ function truthy(value) {
     if (value == null) return false;
     const normalized = String(value).trim().toLowerCase();
     return normalized === "true" || normalized === "1";
+}
+
+function projectPoint(d) {
+    if (leafletMap) {
+        const point = leafletMap.latLngToContainerPoint([d.lat, d.long]);
+        const mapRect = document.getElementById("leafletMap").getBoundingClientRect();
+        const svgRect = document.getElementById("mapSvg").getBoundingClientRect();
+        const dx = svgRect.left - mapRect.left;
+        const dy = svgRect.top - mapRect.top;
+        return { x: point.x - dx, y: point.y - dy };
+    }
+    return { x: xScale(d.long), y: yScale(d.lat) };
 }
 
 function parseDateValue(value) {
@@ -731,6 +733,19 @@ function updateFurWaffle() {
     });
 }
 
+function updateFurLegend() {
+    const items = furWaffleCategories.map(cat => ({ label: cat, color: furWaffleColors[cat] }));
+
+    const entries = furLegend.selectAll(".legend-item").data(items, d => d.label);
+    const enter = entries.enter().append("div").attr("class", "legend-item");
+    enter.append("span").attr("class", "legend-swatch");
+    enter.append("span").attr("class", "legend-label");
+
+    entries.merge(enter).select(".legend-swatch").style("background", d => d.color);
+    entries.merge(enter).select(".legend-label").text(d => d.label);
+    entries.exit().remove();
+}
+
 function getFilteredData(options = {}) {
     const skipBehaviorFilter = options.skipBehaviorFilter === true;
     const shiftVal = shiftFilter.property("value");
@@ -1017,7 +1032,19 @@ function updateDateLabel() {
     }
 }
 
+function syncSvgToMap() {
+    const mapEl = document.getElementById("leafletMap");
+    const w = mapEl.offsetWidth;
+    const h = mapEl.offsetHeight;
+    d3.select("#mapSvg")
+        .attr("width", w)
+        .attr("height", h)
+        .style("top", "0px")
+        .style("left", "0px");
+}
+
 function updatePoints() {
+    syncSvgToMap();
     const filtered = getFilteredData();
 
     const circles = pointLayer.selectAll("circle").data(filtered, d => d.unique_squirrel_id);
@@ -1027,8 +1054,8 @@ function updatePoints() {
             enter =>
                 enter
                     .append("circle")
-                    .attr("cx", d => xScale(d.long))
-                    .attr("cy", d => yScale(d.lat))
+                    .attr("cx", d => projectPoint(d).x)
+                    .attr("cy", d => projectPoint(d).y)
                     .attr("r", 0)
                     .attr("fill", d => getPointColor(d))
                     .attr("opacity", 0.45)
@@ -1075,8 +1102,8 @@ function updatePoints() {
                     update
                         .transition()
                         .duration(300)
-                        .attr("cx", d => xScale(d.long))
-                        .attr("cy", d => yScale(d.lat))
+                        .attr("cx", d => projectPoint(d).x)
+                        .attr("cy", d => projectPoint(d).y)
                         .attr("fill", d => getPointColor(d))
                         .attr("opacity", 0.45)
                         .attr("r", 4.2)
@@ -1093,6 +1120,7 @@ function updatePoints() {
 
     updateLegend();
     updateFurWaffle();
+    updateFurLegend();
     updateBehaviorExplorer();
     updateInteractionExplorer();
     applyPointHighlights();
@@ -2058,12 +2086,36 @@ d3.csv("data/nyc_squirrels.csv").then(data => {
         ).values()
     ).sort((a, b) => a - b);
 
+    leafletMap = L.map("leafletMap", {
+        center: [40.7851, -73.9683],
+        zoom: 15,
+        zoomControl: true
+    });
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors"
+    }).addTo(leafletMap);
+
+    leafletMap.on("moveend", () => {
+        syncSvgToMap();
+        updatePoints();
+    });
+    leafletMap.on("zoomend", () => {
+        syncSvgToMap();
+        updatePoints();
+    });
+
     drawBoundary();
     setupTimeline();
     updateBehaviorLegend();
     updateInteractionLegend();
     initializeEvents();
     updatePoints();
+    updateFurWaffle();
+    updateFurLegend();
+    updateBehaviorExplorer();
+    updateInteractionExplorer();
+    updateDayShiftCharts();
 }).catch(error => {
     console.error("Error loading squirrel data:", error);
 
