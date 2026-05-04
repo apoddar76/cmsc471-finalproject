@@ -10,3 +10,10 @@ This project uses the **[NYC Squirrel Census dataset](https://github.com/rfordat
 * **Aditri Gadigi**: Created fur color and time of day visualizations, added leaflet map rendering, including pan and zoom and mapping data to map image, documentation/acknowledgement on the website and README 
 * **Amogh Gurram**: Created 4 stacked bar charts with an option to view by percentage with each one being for a different human-squirrel interaction, added a feature to select an interaction and filter the map based on that, also fixed the squirrel cursor 
 * **Bhavini Pandey**: Created component 3: behavior explorer. Added features to sort by frequency and display relevant points on the main map visualization based on selections made in the bar chart. Also edited the compass location, size, and directions in the main visualization
+
+## AI Acknowledgement 
+* Used Cursor to generate website layout and format
+* Used ChatGPT to generate code for main map visualization
+* Used Cursor to create code for behavior explorer visualization
+* Used Cursor to generate code for stacked bar chart
+* Used Cursor to generate code for fur color waffle chart 
