@@ -10,6 +10,33 @@ const interactionChartMargin = { top: 88, right: 34, bottom: 120, left: 80 };
 /** Space below SVG title/subtitle before the 2×2 grid. */
 const interactionPlotGridTopPad = 28;
 
+const furWaffleColors = {
+    Gray: "#8f8f8f",
+    Cinnamon: "#c47b44",
+    Black: "#222222",
+    Other: "#c9bdb0"
+};
+const furWaffleCategories = ["Gray", "Cinnamon", "Black", "Other"];
+const waffleCols = 10;
+const waffleRows = 10;
+const waffleCell = 15;
+const wafflePad = 2;
+const waffleChartWidth = 920;
+const waffleChartHeight = 236;
+const waffleMargin = { top: 12, right: 40, bottom: 44, left: 40 };
+
+/** AM vs PM stacked charts use the same layout constants as Human–Squirrel Interaction. */
+const shiftCompareColors = {
+    AM: "#b5652b",
+    PM: "#2f6f4e"
+};
+const dayShiftPanels = [
+    { value: "overall", label: "Overall" },
+    { value: "location", label: "By location" },
+    { value: "fur", label: "By fur color" },
+    { value: "reaction", label: "By human reaction" }
+];
+
 const behaviorOptions = [
     { value: "all", label: "All behaviors" },
     { value: "running", label: "Running" },
@@ -125,9 +152,25 @@ visContainer.html(`
     </div>
 
     <div class="legend" id="legend"></div>
-    <div class="chart-wrap">
+
+    <div class="chart-wrap map-chart-stack">
         <svg id="mapSvg"></svg>
     </div>
+
+    
+    <section class="behavior-explorer-section">
+        <div class="behavior-explorer-header">
+            <div>
+                <h3>Fur Color Visualizer</h3>
+                <p>
+                    Use the map filters and the timeline to visualize proportions in fur color. Click on a fur color group to highlight it on the map.
+                </p>
+            </div>
+        </div>
+        <div class="chart-wrap">
+            <svg id="furWaffleSvg"></svg>
+        </div>
+    </section>
 
     <section class="behavior-explorer-section">
         <div class="behavior-explorer-header">
@@ -164,6 +207,36 @@ visContainer.html(`
         <div class="behavior-legend interaction-legend" id="interactionLegend"></div>
         <div class="chart-wrap">
             <svg id="interactionSvg"></svg>
+        </div>
+    </section>
+
+    <section class="behavior-explorer-section">
+        <div class="behavior-explorer-header interaction-explorer-header">
+            <div>
+                <h3>Time of Day Trends</h3>
+                <p>
+                    How does squirrel activity shift across the day? Use the map filters to compare AM and PM. Click on a section of the graph to highlight it on the map.
+                </p>
+            </div>
+            <div class="interaction-controls">
+                <label class="interaction-toggle">
+                    <input type="checkbox" id="dayShiftNormalize" checked>
+                    100% stacked
+                </label>
+            </div>
+        </div>
+        <div class="behavior-legend day-shift-legend" id="dayShiftLegend">
+            <div class="legend-item">
+                <span class="legend-swatch" style="background:#b5652b"></span>
+                <span class="legend-label">AM (morning)</span>
+            </div>
+            <div class="legend-item">
+                <span class="legend-swatch" style="background:#2f6f4e"></span>
+                <span class="legend-label">PM (afternoon / evening)</span>
+            </div>
+        </div>
+        <div class="chart-wrap">
+            <svg id="dayShiftSvg"></svg>
         </div>
     </section>
 `);
@@ -220,6 +293,43 @@ const dateLabel = d3.select("#dateLabel");
 const playButton = d3.select("#playButton");
 const showAllDates = d3.select("#showAllDates");
 const legend = d3.select("#legend");
+const furWaffleSvg = d3.select("#furWaffleSvg").attr("width", waffleChartWidth).attr("height", waffleChartHeight);
+const furWafflePlot = furWaffleSvg.append("g").attr("class", "fur-waffle-plot");
+const furWaffleGridLayer = furWafflePlot.append("g").attr("class", "fur-waffle-grid");
+const furWaffleFootnote = furWaffleSvg
+    .append("text")
+    .attr("class", "fur-waffle-footnote")
+    .attr("x", waffleChartWidth / 2)
+    .attr("y", waffleChartHeight - 14)
+    .attr("text-anchor", "middle");
+
+const dayShiftNormalize = d3.select("#dayShiftNormalize");
+const dayShiftSvg = d3
+    .select("#dayShiftSvg")
+    .attr("width", interactionChartWidth)
+    .attr("height", interactionChartHeight);
+const dayShiftPlot = dayShiftSvg
+    .append("g")
+    .attr("transform", `translate(${interactionChartMargin.left},${interactionChartMargin.top})`);
+const dayShiftBarsLayer = dayShiftPlot
+    .append("g")
+    .attr("class", "day-shift-bars-layer")
+    .attr("transform", `translate(0,${interactionPlotGridTopPad})`);
+dayShiftSvg
+    .append("text")
+    .attr("class", "interaction-title")
+    .attr("x", interactionChartWidth / 2)
+    .attr("y", 30)
+    .attr("text-anchor", "middle")
+    .text("Time of day: AM vs PM");
+dayShiftSvg
+    .append("text")
+    .attr("class", "interaction-subtitle")
+    .attr("x", interactionChartWidth / 2)
+    .attr("y", 52)
+    .attr("text-anchor", "middle")
+    .text("Hover a segment for counts and percentages within each group");
+
 const behaviorLegend = d3.select("#behaviorLegend");
 const behaviorSvg = d3
     .select("#behaviorSvg")
@@ -312,6 +422,9 @@ let selectedLocationFromChart = null;
 let sortBehaviorByFrequency = false;
 let lockedInteractionHighlight = null; // { breakdown, group, reaction }
 let hoveredInteractionHighlight = null; // { breakdown, group, reaction }
+let lockedDayShiftHighlight = null; // { breakdown, group, shift }
+/** Locked fur category from waffle click; highlights matching points on the map. */
+let lockedFurHighlight = null;
 
 function truthy(value) {
     if (value === true) return true;
@@ -373,7 +486,18 @@ function matchesInteractionGroup(d, breakdown, groupValue) {
     if (breakdown === "shift") return (d.shift || "Unknown") === groupValue;
     if (breakdown === "location") return (d.location || "Unknown") === groupValue;
     if (breakdown === "fur") return (d.primary_fur_color || "Unknown") === groupValue;
+    if (breakdown === "reaction") return getHumanReaction(d) === groupValue;
     return true;
+}
+
+function matchesDayShiftHighlight(d) {
+    if (!lockedDayShiftHighlight) return true;
+    if (d.shift !== lockedDayShiftHighlight.shift) return false;
+    return matchesInteractionGroup(
+        d,
+        lockedDayShiftHighlight.breakdown,
+        lockedDayShiftHighlight.group
+    );
 }
 
 function getPointColor(d) {
@@ -459,6 +583,154 @@ function updateLegend() {
     entries.exit().remove();
 }
 
+function furCategory(d) {
+    const fur = d.primary_fur_color;
+    if (fur === "Gray" || fur === "Cinnamon" || fur === "Black") return fur;
+    return "Other";
+}
+
+/**
+ * Round counts to a fixed number of cells (e.g. 100) so the waffle always tiles completely.
+ */
+function allocateWaffleCells(counts, cellCount) {
+    const total = d3.sum(furWaffleCategories, k => counts[k] || 0);
+    if (total === 0) return furWaffleCategories.map(() => 0);
+
+    const exact = furWaffleCategories.map(k => ((counts[k] || 0) / total) * cellCount);
+    const floored = exact.map(x => Math.floor(x));
+    const remainder = cellCount - d3.sum(floored);
+    const fractional = exact.map((x, i) => ({ i, frac: x - floored[i] }));
+    fractional.sort((a, b) => b.frac - a.frac);
+    const out = [...floored];
+    for (let j = 0; j < remainder; j++) {
+        out[fractional[j].i]++;
+    }
+    return out;
+}
+
+function updateFurWaffle() {
+    const source = getFilteredData();
+    const n = source.length;
+    const counts = { Gray: 0, Cinnamon: 0, Black: 0, Other: 0 };
+    source.forEach(d => {
+        counts[furCategory(d)]++;
+    });
+
+    const cells = waffleCols * waffleRows;
+    const perCategory = allocateWaffleCells(counts, cells);
+    const palette = [];
+    furWaffleCategories.forEach((cat, ci) => {
+        for (let i = 0; i < perCategory[ci]; i++) palette.push(cat);
+    });
+
+    const innerW = waffleCols * waffleCell + (waffleCols - 1) * wafflePad;
+    const plotInnerWidth = waffleChartWidth - waffleMargin.left - waffleMargin.right;
+    const gridOffsetX = Math.max(0, (plotInnerWidth - innerW) / 2);
+
+    furWaffleFootnote.text(
+        n === 0
+            ? "No sightings match the current filters."
+            : `n = ${n} sightings · Gray ${counts.Gray} (${n ? ((counts.Gray / n) * 100).toFixed(1) : 0}%) · Cinnamon ${counts.Cinnamon} (${n ? ((counts.Cinnamon / n) * 100).toFixed(1) : 0}%) · Black ${counts.Black} (${n ? ((counts.Black / n) * 100).toFixed(1) : 0}%) · Other ${counts.Other}`
+    );
+
+    const cellData = d3.range(cells).map((i, idx) => ({
+        row: Math.floor(idx / waffleCols),
+        col: idx % waffleCols,
+        category: palette[idx] || "Other"
+    }));
+
+    const iconScale = waffleCell / 15;
+    const cellsSel = furWaffleGridLayer
+        .selectAll(".fur-waffle-cell")
+        .data(cellData, (_, i) => i)
+        .join(
+            enter => {
+                const g = enter.append("g").attr("class", "fur-waffle-cell");
+                g.append("rect")
+                    .attr("class", "fur-waffle-tile")
+                    .attr("rx", 3)
+                    .attr("ry", 3)
+                    .attr("width", waffleCell)
+                    .attr("height", waffleCell)
+                    .attr("stroke", "#fffdf7")
+                    .attr("stroke-width", 0.6);
+                g.append("path")
+                    .attr("class", "fur-waffle-icon")
+                    .attr(
+                        "d",
+                        "M7.5 3.5c1.2 0 2.2 0.9 2.4 2.1l0.1 1.1H5l0.1-1.1c0.2-1.2 1.2-2.1 2.4-2.1zm-3.8 4.7h7.6c-0.3 2.5-2.3 4.3-4.8 4.3s-4.5-1.8-4.8-4.3z"
+                    )
+                    .attr("transform", `translate(${(waffleCell - 15 * iconScale) / 2},${(waffleCell - 15 * iconScale) / 2}) scale(${iconScale})`);
+                return g;
+            },
+            update => update,
+            exit => exit.remove()
+        );
+
+    cellsSel.attr(
+        "transform",
+        d =>
+            `translate(${d.col * (waffleCell + wafflePad)},${d.row * (waffleCell + wafflePad)})`
+    );
+
+    cellsSel.select(".fur-waffle-tile").attr("fill", d => furWaffleColors[d.category]);
+
+    cellsSel.each(function (d) {
+        const cat = d.category;
+        const iconFill =
+            cat === "Black" ? "rgba(255,253,247,0.2)" : "rgba(255,253,247,0.42)";
+        d3.select(this).select(".fur-waffle-icon").attr("fill", iconFill);
+    });
+
+    furWafflePlot.attr(
+        "transform",
+        `translate(${waffleMargin.left + gridOffsetX},${waffleMargin.top})`
+    );
+
+    cellsSel
+        .style("cursor", "pointer")
+        .on("mouseover", function (event, d) {
+            const cat = d.category;
+            const c = counts[cat] ?? 0;
+            const pct = n ? (c / n) * 100 : 0;
+            tooltip
+                .style("opacity", 1)
+                .html(`
+                    <div><strong>Fur category:</strong> ${cat}</div>
+                    <div><strong>Count in view:</strong> ${c}</div>
+                    <div><strong>% of filtered sightings:</strong> ${pct.toFixed(1)}%</div>
+                    <div><strong>Total sightings (n):</strong> ${n}</div>
+                `);
+        })
+        .on("mousemove", function (event) {
+            tooltip.style("left", `${event.pageX + 14}px`).style("top", `${event.pageY - 18}px`);
+        })
+        .on("mouseout", function () {
+            tooltip.style("opacity", 0);
+        })
+        .on("click", (event, d) => {
+            event.stopPropagation();
+            const cat = d.category;
+            lockedFurHighlight = lockedFurHighlight === cat ? null : cat;
+            applyPointHighlights();
+            furWaffleGridLayer.selectAll(".fur-waffle-cell").each(function (row) {
+                const sel = lockedFurHighlight === row.category;
+                d3.select(this)
+                    .select(".fur-waffle-tile")
+                    .attr("stroke", sel ? "#3b2613" : "#fffdf7")
+                    .attr("stroke-width", sel ? 2.2 : 0.6);
+            });
+        });
+
+    furWaffleGridLayer.selectAll(".fur-waffle-cell").each(function (d) {
+        const sel = lockedFurHighlight === d.category;
+        d3.select(this)
+            .select(".fur-waffle-tile")
+            .attr("stroke", sel ? "#3b2613" : "#fffdf7")
+            .attr("stroke-width", sel ? 2.2 : 0.6);
+    });
+}
+
 function getFilteredData(options = {}) {
     const skipBehaviorFilter = options.skipBehaviorFilter === true;
     const shiftVal = shiftFilter.property("value");
@@ -469,7 +741,8 @@ function getFilteredData(options = {}) {
     const showAll = showAllDates.property("checked");
 
     return cleanedData.filter(d => {
-        const shiftMatch = shiftVal === "all" || d.shift === shiftVal;
+        const shiftMatch =
+            options.ignoreShift === true ? true : shiftVal === "all" || d.shift === shiftVal;
         const furMatch = furVal === "all" || d.primary_fur_color === furVal;
         const ageMatch = ageVal === "all" || d.age === ageVal;
         const behaviorMatch = skipBehaviorFilter || behaviorVal === "all" || d[behaviorVal] === true;
@@ -788,12 +1061,8 @@ function updatePoints() {
                             .style("top", `${event.pageY - 18}px`);
                     })
                     .on("mouseout", function () {
-                        d3.select(this)
-                            .attr("stroke", "#fff")
-                            .attr("stroke-width", 0.4)
-                            .attr("opacity", 0.45);
-
                         tooltip.style("opacity", 0);
+                        applyPointHighlights();
                     })
                     .call(enter =>
                         enter
@@ -823,9 +1092,11 @@ function updatePoints() {
         );
 
     updateLegend();
+    updateFurWaffle();
     updateBehaviorExplorer();
     updateInteractionExplorer();
-    applyInteractionHighlightToPoints();
+    applyPointHighlights();
+    updateDayShiftCharts();
 }
 
 function drawBoundary() {
@@ -1051,12 +1322,17 @@ function initializeEvents() {
     interactionNormalize.on("change", () => {
         updateInteractionExplorer();
     });
+    dayShiftNormalize.on("change", () => {
+        updateDayShiftCharts();
+    });
 }
 
 d3.select(window).on("keydown", event => {
     if (event.key === "Escape") {
         hoveredInteractionHighlight = null;
         lockedInteractionHighlight = null;
+        lockedFurHighlight = null;
+        lockedDayShiftHighlight = null;
         updatePoints();
     }
 });
@@ -1133,37 +1409,333 @@ function setInteractionHighlight(next, { lock }) {
         hoveredInteractionHighlight = next;
     }
 
-    applyInteractionHighlightToPoints();
+    applyPointHighlights();
 }
 
-function applyInteractionHighlightToPoints() {
+function applyPointHighlights() {
     const active = hoveredInteractionHighlight || lockedInteractionHighlight;
-    const hasActive =
+    const hasInteraction =
         active && active.reaction && active.reaction !== "Unknown" && active.reaction !== "";
+    const hasFur = lockedFurHighlight != null;
+    const hasDayShift = lockedDayShiftHighlight != null;
+
+    if (!hasInteraction && !hasFur && !hasDayShift) {
+        pointLayer
+            .selectAll("circle")
+            .attr("opacity", 0.45)
+            .attr("stroke", "#fff")
+            .attr("stroke-width", 0.4);
+        return;
+    }
 
     pointLayer
         .selectAll("circle")
         .attr("opacity", d => {
-            if (!hasActive) return 0.45;
-            const isMatch =
-                reactionMatches(d, active.reaction) &&
-                matchesInteractionGroup(d, active.breakdown, active.group);
-            return isMatch ? 0.92 : 0.08;
+            const matchI =
+                !hasInteraction ||
+                (reactionMatches(d, active.reaction) &&
+                    matchesInteractionGroup(d, active.breakdown, active.group));
+            const matchF = !hasFur || furCategory(d) === lockedFurHighlight;
+            const matchDay = matchesDayShiftHighlight(d);
+            return matchI && matchF && matchDay ? 0.92 : 0.08;
         })
         .attr("stroke", d => {
-            if (!hasActive) return "#fff";
-            const isMatch =
-                reactionMatches(d, active.reaction) &&
-                matchesInteractionGroup(d, active.breakdown, active.group);
-            return isMatch ? "#3b2613" : "#fff";
+            const matchI =
+                !hasInteraction ||
+                (reactionMatches(d, active.reaction) &&
+                    matchesInteractionGroup(d, active.breakdown, active.group));
+            const matchF = !hasFur || furCategory(d) === lockedFurHighlight;
+            const matchDay = matchesDayShiftHighlight(d);
+            return matchI && matchF && matchDay ? "#3b2613" : "#fff";
         })
         .attr("stroke-width", d => {
-            if (!hasActive) return 0.4;
-            const isMatch =
-                reactionMatches(d, active.reaction) &&
-                matchesInteractionGroup(d, active.breakdown, active.group);
-            return isMatch ? 1.2 : 0.4;
+            const matchI =
+                !hasInteraction ||
+                (reactionMatches(d, active.reaction) &&
+                    matchesInteractionGroup(d, active.breakdown, active.group));
+            const matchF = !hasFur || furCategory(d) === lockedFurHighlight;
+            const matchDay = matchesDayShiftHighlight(d);
+            return matchI && matchF && matchDay ? 1.2 : 0.4;
         });
+}
+
+function getDayShiftGroups(breakdown) {
+    if (breakdown === "overall") return ["All"];
+    if (breakdown === "location") return ["Ground Plane", "Above Ground"];
+    if (breakdown === "fur") return ["Gray", "Cinnamon", "Black"];
+    if (breakdown === "reaction") return ["Approaches", "Runs From", "Indifferent"];
+    return ["All"];
+}
+
+function getDayShiftSeriesData(breakdown, source) {
+    const groups = getDayShiftGroups(breakdown);
+    const series = groups.map(group => {
+        const subset = source.filter(d => {
+            if (breakdown === "overall") return true;
+            if (breakdown === "reaction") return getHumanReaction(d) === group;
+            return matchesInteractionGroup(d, breakdown, group);
+        });
+        const amCount = subset.filter(d => d.shift === "AM").length;
+        const pmCount = subset.filter(d => d.shift === "PM").length;
+        const segments = [
+            { shift: "AM", color: shiftCompareColors.AM, count: amCount },
+            { shift: "PM", color: shiftCompareColors.PM, count: pmCount }
+        ];
+        const total = amCount + pmCount;
+        return { group, label: group === "All" ? "All" : group, total, segments };
+    });
+    return { breakdown, series };
+}
+
+function updateDayShiftCharts() {
+    const normalize = dayShiftNormalize.property("checked");
+    const source = getFilteredData({ skipBehaviorFilter: true });
+    const totalFiltered = source.length;
+
+    const panels = dayShiftPanels.map(panel => ({
+        ...panel,
+        ...getDayShiftSeriesData(panel.value, source)
+    }));
+
+    const panelCols = 2;
+    const panelRows = 2;
+    const panelGapX = 22;
+    const panelGapY = 104;
+    const gridInnerHeight = interactionInnerHeight - interactionPlotGridTopPad;
+    const panelWidth = (interactionInnerWidth - panelGapX * (panelCols - 1)) / panelCols;
+    const panelHeight = (gridInnerHeight - panelGapY * (panelRows - 1)) / panelRows;
+
+    const globalMaxTotal = d3.max(panels, p => d3.max(p.series, d => d.total)) || 1;
+    const y = d3
+        .scaleLinear()
+        .domain([0, normalize ? 1 : Math.max(1, globalMaxTotal)])
+        .nice()
+        .range([panelHeight, 0]);
+
+    const panelGroups = dayShiftBarsLayer
+        .selectAll(".day-shift-panel")
+        .data(panels, d => d.value)
+        .join(enter => {
+            const g = enter.append("g").attr("class", "day-shift-panel");
+            g.append("rect").attr("class", "interaction-panel-bg").attr("rx", 14).attr("ry", 14);
+            g.append("text").attr("class", "interaction-panel-title");
+            g.append("g").attr("class", "interaction-axis interaction-axis-y");
+            g.append("g").attr("class", "interaction-axis interaction-axis-x");
+            g.append("g").attr("class", "interaction-panel-bars");
+            return g;
+        });
+
+    panelGroups
+        .transition()
+        .duration(450)
+        .attr("transform", (d, i) => {
+            const col = i % panelCols;
+            const row = Math.floor(i / panelCols);
+            return `translate(${col * (panelWidth + panelGapX)},${row * (panelHeight + panelGapY)})`;
+        });
+
+    panelGroups.each(function (panelDatum, panelIndex) {
+        const panel = d3.select(this);
+        const breakdown = panelDatum.value;
+        const series = panelDatum.series;
+        const col = panelIndex % panelCols;
+
+        const x = d3
+            .scaleBand()
+            .domain(series.map(d => d.group))
+            .range([0, panelWidth])
+            .padding(0.22);
+
+        panel
+            .select(".interaction-panel-bg")
+            .attr("x", -10)
+            .attr("y", -12)
+            .attr("width", panelWidth + 20)
+            .attr("height", panelHeight + 62);
+
+        panel
+            .select(".interaction-panel-title")
+            .attr("x", panelWidth / 2)
+            .attr("y", -22)
+            .attr("text-anchor", "middle")
+            .text(panelDatum.label);
+
+        panel
+            .select(".interaction-axis-x")
+            .attr("transform", `translate(0,${panelHeight + 18})`)
+            .transition()
+            .duration(450)
+            .call(axis => {
+                const axisGen = d3.axisBottom(x).tickSizeOuter(0);
+                axis.call(axisGen);
+
+                axis
+                    .selectAll("text")
+                    .style("text-anchor", "middle")
+                    .style("font-style", "normal")
+                    .attr("transform", "")
+                    .attr("dx", "0")
+                    .attr("dy", "0.9em");
+            });
+
+        const showYAxis = col === 0;
+        const yAxis = panel
+            .select(".interaction-axis-y")
+            .transition()
+            .duration(450)
+            .call(
+                (showYAxis ? d3.axisLeft(y) : d3.axisLeft(y).tickValues([]))
+                    .ticks(6)
+                    .tickFormat(normalize ? d3.format(".0%") : d3.format("d"))
+            );
+
+        if (yAxis.selection) {
+            yAxis.selection().selectAll("text").attr("dx", "-0.2em");
+        }
+
+        const barsLayer = panel.select(".interaction-panel-bars");
+
+        const barGroups = barsLayer
+            .selectAll(".day-shift-group")
+            .data(series, d => d.group)
+            .join(
+                enter => enter.append("g").attr("class", "day-shift-group"),
+                update => update,
+                exit => exit.remove()
+            );
+
+        barGroups
+            .transition()
+            .duration(450)
+            .attr("transform", d => `translate(${x(d.group)},0)`);
+
+        barGroups.each(function (groupDatum) {
+            const g = d3.select(this);
+            const total = groupDatum.total || 0;
+
+            let runningY = y(0);
+            const stacked = groupDatum.segments.map(seg => {
+                const value = normalize ? (total ? seg.count / total : 0) : seg.count;
+                const y1 = runningY;
+                const y0 = y1 - (y(0) - y(value));
+                runningY = y0;
+                return {
+                    ...seg,
+                    value,
+                    y0,
+                    y1,
+                    group: groupDatum.group,
+                    breakdown
+                };
+            });
+
+            g.selectAll("rect")
+                .data(stacked, d => `${d.breakdown}-${d.group}-${d.shift}`)
+                .join(
+                    enter =>
+                        enter
+                            .append("rect")
+                            .attr("class", "day-shift-segment")
+                            .attr("x", 0)
+                            .attr("width", x.bandwidth())
+                            .attr("y", y(0))
+                            .attr("height", 0)
+                            .attr("fill", d => d.color)
+                            .attr("stroke", "#fffdf7")
+                            .attr("stroke-width", 1)
+                            .style("cursor", "pointer")
+                            .on("mouseover", function (event, d) {
+                                d3.select(this).attr("opacity", 0.85);
+                                const pctWithin = total ? (d.count / total) * 100 : 0;
+                                const pctAll =
+                                    totalFiltered && d.count ? (d.count / totalFiltered) * 100 : 0;
+                                tooltip
+                                    .style("opacity", 1)
+                                    .html(`
+                                        <div><strong>${panelDatum.label}:</strong> ${groupDatum.label}</div>
+                                        <div><strong>Shift:</strong> ${d.shift}</div>
+                                        <div><strong>Count:</strong> ${d.count}</div>
+                                        <div><strong>% within group:</strong> ${pctWithin.toFixed(1)}%</div>
+                                        <div><strong>% of filtered sightings:</strong> ${pctAll.toFixed(1)}%</div>
+                                    `);
+                            })
+                            .on("mousemove", function (event) {
+                                tooltip
+                                    .style("left", `${event.pageX + 14}px`)
+                                    .style("top", `${event.pageY - 18}px`);
+                            })
+                            .on("mouseout", function () {
+                                d3.select(this).attr("opacity", 1);
+                                tooltip.style("opacity", 0);
+                            })
+                            .on("click", function (event, d) {
+                                const next = {
+                                    breakdown,
+                                    group: groupDatum.group,
+                                    shift: d.shift
+                                };
+                                const same =
+                                    lockedDayShiftHighlight &&
+                                    lockedDayShiftHighlight.breakdown === next.breakdown &&
+                                    lockedDayShiftHighlight.group === next.group &&
+                                    lockedDayShiftHighlight.shift === next.shift;
+                                lockedDayShiftHighlight = same ? null : next;
+                                applyPointHighlights();
+                                updateDayShiftCharts();
+                            })
+                            .classed(
+                                "day-shift-segment-selected",
+                                d =>
+                                    lockedDayShiftHighlight &&
+                                    lockedDayShiftHighlight.breakdown === breakdown &&
+                                    lockedDayShiftHighlight.group === groupDatum.group &&
+                                    lockedDayShiftHighlight.shift === d.shift
+                            )
+                            .call(enterSel =>
+                                enterSel
+                                    .transition()
+                                    .duration(450)
+                                    .attr("y", d => d.y0)
+                                    .attr("height", d => Math.max(0, d.y1 - d.y0))
+                            ),
+                    update =>
+                        update
+                            .classed(
+                                "day-shift-segment-selected",
+                                d =>
+                                    lockedDayShiftHighlight &&
+                                    lockedDayShiftHighlight.breakdown === breakdown &&
+                                    lockedDayShiftHighlight.group === groupDatum.group &&
+                                    lockedDayShiftHighlight.shift === d.shift
+                            )
+                            .on("click", function (event, d) {
+                                const next = {
+                                    breakdown,
+                                    group: groupDatum.group,
+                                    shift: d.shift
+                                };
+                                const same =
+                                    lockedDayShiftHighlight &&
+                                    lockedDayShiftHighlight.breakdown === next.breakdown &&
+                                    lockedDayShiftHighlight.group === next.group &&
+                                    lockedDayShiftHighlight.shift === next.shift;
+                                lockedDayShiftHighlight = same ? null : next;
+                                applyPointHighlights();
+                                updateDayShiftCharts();
+                            })
+                            .call(upd =>
+                                upd
+                                    .transition()
+                                    .duration(450)
+                                    .attr("x", 0)
+                                    .attr("width", x.bandwidth())
+                                    .attr("y", d => d.y0)
+                                    .attr("height", d => Math.max(0, d.y1 - d.y0))
+                                    .attr("fill", d => d.color)
+                            )
+                );
+        });
+    });
 }
 
 function updateInteractionExplorer() {

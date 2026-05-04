@@ -221,7 +221,7 @@ body {
 }
 
 .plot-bg {
-    fill: #f3ead7;
+    fill: rgba(243, 234, 215, 0.55);
 }
 
 .park-boundary {
@@ -311,6 +311,55 @@ body {
     color: #8b2d2d;
     font-weight: 700;
     margin-top: 1rem;
+}
+
+.map-chart-stack {
+    margin-bottom: 0.35rem;
+}
+
+.park-reference-map {
+    margin: 0 0 1.25rem;
+    padding: 0;
+    border: 1px solid #dbc4a4;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #fcf8f0;
+    max-width: 920px;
+}
+
+.park-reference-map img {
+    display: block;
+    width: 100%;
+    height: auto;
+    vertical-align: middle;
+}
+
+.park-reference-map figcaption {
+    padding: 0.55rem 0.85rem;
+    font-size: 0.84rem;
+    color: #6a4a2c;
+    border-top: 1px solid #e4d0b3;
+    background: rgba(255, 249, 239, 0.85);
+}
+
+.park-map-raster {
+    opacity: 0.92;
+}
+
+.day-shift-segment-selected {
+    stroke: #3b2613;
+    stroke-width: 2px;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.18));
+}
+
+
+.fur-waffle-footnote {
+    font-size: 0.82rem;
+    fill: #6a4a2c;
+}
+
+.fur-waffle-icon {
+    pointer-events: none;
 }
 
 .behavior-explorer-section {
