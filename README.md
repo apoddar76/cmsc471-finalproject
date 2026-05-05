@@ -16,4 +16,5 @@ This project uses the **[NYC Squirrel Census dataset](https://github.com/rfordat
 * Used ChatGPT to generate code for main map visualization
 * Used Cursor to create code for behavior explorer visualization
 * Used Cursor to generate code for stacked bar chart
-* Used Cursor to generate code for fur color waffle chart 
+* Used Cursor to generate code for fur color waffle chart
+* Used Cursor to generate code for Leaflet integration
