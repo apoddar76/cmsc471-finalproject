@@ -7,7 +7,7 @@ This project uses the **[NYC Squirrel Census dataset](https://github.com/rfordat
 **[Click here to view the site!](https://apoddar76.github.io/cmsc471-finalproject/ )**
 
 ## Contributors 
-* **Melanie Chen**: Set up website layout and structure, created introduction page
+* **Melanie Chen**: Created overall website layout and structure, landing page documenting dataset information, scrolling "Start Exploring" button, and squirrel-themed elements throughout (squirrel icon, acorn cursor effect)
 * **Anushka Poddar**: Created main map visualization, added tooltips and time-slider and dropdown features, outlined overall project plan and all visualizations + features
 * **Aditri Gadigi**: Created fur color and time of day visualizations, added leaflet map rendering, including pan and zoom and mapping data to map image, documentation/acknowledgement on the website and README 
 * **Amogh Gurram**: Created 4 stacked bar charts with an option to view by percentage with each one being for a different human-squirrel interaction, added a feature to select an interaction and filter the map based on that, also fixed the squirrel cursor 
