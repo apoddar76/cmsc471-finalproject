@@ -4,6 +4,8 @@
 ## About the dataset
 This project uses the **[NYC Squirrel Census dataset](https://github.com/rfordatascience/tidytuesday/tree/main/data/2019/2019-10-29)**, which includes **3,000 recorded squirrel sightings** across Central Park. The data captures location coordinates, morning vs. evening observations (shifts), fur color categories, and behavior/human-interaction variables such as running, climbing, foraging, approaching people, and running from people.
 
+**[Click here to view the site!](https://apoddar76.github.io/cmsc471-finalproject/ )**
+
 ## Contributors 
 * **Melanie Chen**: Set up website layout and structure, created introduction page
 * **Anushka Poddar**: Created main map visualization, added tooltips and time-slider and dropdown features, outlined overall project plan and all visualizations + features
